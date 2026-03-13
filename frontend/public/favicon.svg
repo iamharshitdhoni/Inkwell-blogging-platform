@@ -1,0 +1,30 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Inkwell base -->
+  <path
+    d="M16 4C13.79 4 12 5.79 12 8V12H20V8C20 5.79 18.21 4 16 4Z"
+    fill="#1f2937"
+    opacity="0.8"
+  />
+  <!-- Inkwell body -->
+  <path
+    d="M12 12V20C12 22.21 13.79 24 16 24C18.21 24 20 22.21 20 20V12H12Z"
+    fill="#374151"
+    opacity="0.6"
+  />
+  <!-- Ink inside -->
+  <path
+    d="M14 14V18C14 19.1 14.9 20 16 20C17.1 20 18 19.1 18 18V14H14Z"
+    fill="#3b82f6"
+  />
+  <!-- Pen nib -->
+  <path
+    d="M22 8L26 12L24 14L20 10L22 8Z"
+    fill="#1f2937"
+  />
+  <!-- Pen body -->
+  <path
+    d="M20 10L24 14L28 10L24 6L20 10Z"
+    fill="#374151"
+    opacity="0.9"
+  />
+</svg>

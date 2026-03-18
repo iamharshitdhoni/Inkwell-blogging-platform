@@ -1,5 +1,4 @@
 import express from "express";
-import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 
@@ -8,9 +7,19 @@ import userRoutes from "./routes/userRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import healthRoutes from "./routes/healthRoutes.js";
+import connectDB from "./config/db.js";
 
 dotenv.config();
+
 const app = express();
+const PORT = process.env.PORT || 5000;
+const HOST = "0.0.0.0";
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+
+if (!MONGO_URI) {
+  console.error("\n❌ Missing MongoDB URI. Set MONGO_URI or MONGODB_URI in environment variables.");
+  process.exit(1);
+}
 
 app.use(cors());
 // Increase payload limit for base64 image uploads
@@ -23,9 +32,15 @@ app.use("/api/blogs", blogRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/health", healthRoutes);
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("MongoDB Connected");
-    app.listen(5000, '0.0.0.0', () => console.log("Server running on port 5000"));
-  })
-  .catch(err => console.log(err));
+const startServer = async () => {
+  try {
+    await connectDB(MONGO_URI);
+    app.listen(PORT, HOST, () => console.log(`Server running on port ${PORT}`));
+    console.log(`MongoDB connected, listening on ${HOST}:${PORT}`);
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();

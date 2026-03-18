@@ -31,114 +31,80 @@ if (!EMAIL_USER || !EMAIL_PASS) {
 }
 
 // Create transporter
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // use STARTTLS
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-  // Keep logger/debug false in production; useful while debugging
-  logger: process.env.NODE_ENV !== 'production',
-  debug: process.env.NODE_ENV !== 'production',
-  tls: {
-    // Do not fail on invalid certs in dev environments behind certain proxies
-    rejectUnauthorized: process.env.NODE_ENV === 'production',
-  },
-});
+let transporter = null;
 
-// Verify transporter connection (runs on startup)
-console.log(`\n🔍 [EMAIL SERVICE] Verifying Nodemailer transporter connection...`);
-transporter.verify()
-  .then(() => {
-    console.log(`✅ [EMAIL SERVICE] Transporter verified - Ready to send emails`);
-    console.log(`   SMTP Server: smtp.gmail.com:587 (STARTTLS)`);
-    console.log(`   Auth: success for ${maskedUser}`);
-  })
-  .catch((error) => {
-    console.error(`❌ [EMAIL SERVICE] Transporter verification failed!`);
-    const errMsg = error && (error.message || error.response) ? (error.message || error.response) : String(error);
-    console.error(`   Error: ${errMsg}`);
-    // Try to map common Gmail errors to actionable messages
-    if (/Authentication|Invalid login|535|534|534-5.7.9|5\.7\.8/.test(errMsg)) {
-      console.error(`\n   Authentication failed:`);
-      console.error(`   - Ensure 2-Step Verification is enabled for the Gmail account.`);
-      console.error(`   - Generate an App Password (16 characters) and set it as EMAIL_PASS in backend/.env.`);
-      console.error(`   - Do NOT use your regular Gmail password.`);
-    } else if (/ENOTFOUND|ECONNECTION|ETIMEDOUT/.test(errMsg)) {
-      console.error(`\n   Network / connection issue:`);
-      console.error(`   - Check outbound SMTP access on port 587 and firewall/VPN settings.`);
-    }
-    console.error(`\n   Helpful tips:`);
-    console.error(`   - Backend env variables: EMAIL_USER and EMAIL_PASS (or legacy GMAIL_USER/GMAIL_APP_PASSWORD).`);
-    console.error(`   - No spaces or quotes in .env values. Restart the server after editing .env.`);
+if (EMAIL_USER && EMAIL_PASS) {
+  transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // use STARTTLS
+    auth: {
+      user: EMAIL_USER,
+      pass: EMAIL_PASS,
+    },
+    // Keep logger/debug false in production; useful while debugging
+    logger: process.env.NODE_ENV !== 'production',
+    debug: process.env.NODE_ENV !== 'production',
+    tls: {
+      // Do not fail on invalid certs in dev environments behind certain proxies
+      rejectUnauthorized: process.env.NODE_ENV === 'production',
+    },
   });
 
+  // Verify transporter connection (runs on startup)
+  console.log(`\n🔍 [EMAIL SERVICE] Verifying Nodemailer transporter connection...`);
+  transporter.verify()
+    .then(() => {
+      console.log(`✅ [EMAIL SERVICE] Transporter verified - Ready to send emails`);
+      console.log(`   SMTP Server: smtp.gmail.com:587 (STARTTLS)`);
+      console.log(`   Auth: success for ${maskedUser}`);
+    })
+    .catch((error) => {
+      console.error(`❌ [EMAIL SERVICE] Transporter verification failed!`);
+      const errMsg = error && (error.message || error.response) ? (error.message || error.response) : String(error);
+      console.error(`   Error: ${errMsg}`);
+      // Try to map common Gmail errors to actionable messages
+      if (/Authentication|Invalid login|535|534|534-5.7.9|5\.7\.8/.test(errMsg)) {
+        console.error(`\n   Authentication failed:`);
+        console.error(`   - Ensure 2-Step Verification is enabled for the Gmail account.`);
+        console.error(`   - Generate an App Password (16 characters) and set it as EMAIL_PASS in backend/.env.`);
+        console.error(`   - Do NOT use your regular Gmail password.`);
+      } else if (/ENOTFOUND|ECONNECTION|ETIMEDOUT/.test(errMsg)) {
+        console.error(`\n   Network / connection issue:`);
+        console.error(`   - Check outbound SMTP access on port 587 and firewall/VPN settings.`);
+      }
+      console.error(`\n   Helpful tips:`);
+      console.error(`   - Backend env variables: EMAIL_USER and EMAIL_PASS (or legacy GMAIL_USER/GMAIL_APP_PASSWORD).`);
+      console.error(`   - No spaces or quotes in .env values. Restart the server after editing .env.`);
+    });
+} else {
+  console.warn(`\n⚠️  [EMAIL SERVICE] Email credentials missing; email features are disabled until EMAIL_USER/EMAIL_PASS are set.`);
+}
+
 export const sendVerificationEmail = async (email, verificationToken) => {
+  if (!transporter) {
+    console.warn(`⚠️  [EMAIL SERVICE] sendVerificationEmail skipped; SMTP transporter not configured.`);
+    return false;
+  }
+
   try {
     const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}`;
-    
     const mailOptions = {
       from: EMAIL_USER,
       to: email,
       subject: 'Email Verification - Blogging Bliss',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-            <h1 style="margin: 0;">Blogging Bliss</h1>
-            <p>Welcome to our community!</p>
-          </div>
-          
-          <div style="padding: 30px; background: #f8f9fa; border-radius: 0 0 8px 8px;">
-            <h2 style="color: #333; margin-bottom: 15px;">Verify Your Email Address</h2>
-            
-            <p style="color: #666; line-height: 1.6;">
-              Thank you for registering with Blogging Bliss! To get started, please verify your email address by clicking the button below.
-            </p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${verifyLink}" style="
-                display: inline-block;
-                padding: 12px 30px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                font-weight: bold;
-                font-size: 16px;
-              ">
-                Verify Email Address
-              </a>
-            </div>
-            
-            <p style="color: #999; font-size: 13px; text-align: center; margin-top: 20px;">
-              Or copy and paste this link in your browser:
-            </p>
-            
-            <p style="color: #667eea; word-break: break-all; font-size: 12px; text-align: center;">
-              ${verifyLink}
-            </p>
-            
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-            
-            <p style="color: #999; font-size: 12px; margin: 0;">
-              <strong>⏰ Important:</strong> This verification link expires in 15 minutes.<br>
-              If you didn't register for this account, please ignore this email.
-            </p>
-          </div>
-        </div>
-      `,
+      html: `<p>Welcome to Blogging Bliss! Please verify your email:</p><p><a href="${verifyLink}">${verifyLink}</a></p>`,
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${email}`);
+    console.log(`✅ [EMAIL SERVICE] Verification email queued for ${email}`);
     return true;
   } catch (error) {
-    console.error('Error sending verification email:', error.message);
-    throw new Error('Failed to send verification email');
+    console.error(`❌ [EMAIL SERVICE] Failed to send verification email to ${email}:`, error);
+    throw error;
   }
 };
+
 
 export const sendWelcomeEmail = async (email, userName) => {
   try {
